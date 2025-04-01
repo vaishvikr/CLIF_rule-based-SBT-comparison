@@ -14,6 +14,7 @@ warnings.filterwarnings("ignore")
 adt = pc.load_data('clif_adt')
 adt['hospitalization_id'] = adt['hospitalization_id'].astype(str)
 adt['in_dttm'] = pc.getdttm(adt['in_dttm'])
+adt = pc.standardize_datetime_tz(adt,['in_dttm','out_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 pc.deftime(adt['in_dttm'])
 adt.head()
 
@@ -23,6 +24,7 @@ hosp['hospitalization_id'] = hosp['hospitalization_id'].astype(str)
 hosp['hospitalization_joined_id'] = hosp['hospitalization_joined_id'].astype(str)
 hosp['admission_dttm'] = pc.getdttm(hosp['admission_dttm'])
 hosp['discharge_dttm'] = pc.getdttm(hosp['discharge_dttm'])
+hosp = pc.standardize_datetime_tz(hosp,['admission_dttm','discharge_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 hosp.head()
 
 # %%
@@ -73,13 +75,14 @@ rst['hospitalization_id'] = rst['hospitalization_id'].map(hospitalization_to_blo
 rst = rst[~rst['hospitalization_id'].isin(rst[rst['tracheostomy']==1].hospitalization_id.unique())] #exclude trach pats
 
 # %%
-rst['hospitalization_id'].isna().sum()
+rst = pc.standardize_datetime_tz(rst,['recorded_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 
 # %%
 rst.head()
 
 # %%
 pat = pc.load_data('clif_patient')
+pat = pc.standardize_datetime_tz(pat,['birth_date','death_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 
 # %%
 imv_hosp_ids = rst[rst['device_category'].str.lower()=='imv'].hospitalization_id.unique()
@@ -89,8 +92,8 @@ icu_hosp_ids = [x for x in icu_hosp_ids if x is not None]
 imv_hosp_ids = [x for x in imv_hosp_ids if x is not None]
 
 hosp = hosp[
-    (hosp['admission_dttm'].dt.year >= 2025) &
-    #(hosp['admission_dttm'].dt.year <= 2024) &
+    (hosp['admission_dttm'].dt.year >= 2022) &
+    (hosp['admission_dttm'].dt.year <= 2024) &
     (hosp['hospitalization_id'].isin(np.intersect1d(imv_hosp_ids, icu_hosp_ids))) &
     (hosp['age_at_admission'] <=119)
 ].reset_index(drop=True)
@@ -151,7 +154,7 @@ mac = mac[(mac['hospitalization_id'].isin(required_id)) & (mac['med_category'].i
     ]))][mac_col].reset_index(drop=True)
 
 mac['admin_dttm'] = pc.getdttm(mac['admin_dttm'])
-#mac["hosp_id_dttm"] = mac["hospitalization_id"].astype(str) + "_" + mac["admin_dttm"].astype(str)
+mac = pc.standardize_datetime_tz(mac,['admin_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 
 mac['med_dose_unit']=mac['med_dose_unit'].str.lower()
 mac = mac[(mac['med_dose_unit'].str.contains(r'/', na=False)) & (mac['med_dose_unit']!='units/hr')].reset_index(drop=True)
@@ -183,6 +186,7 @@ pat_at = pc.load_data('clif_patient_assessments',-1)
 pat_at_col = ['hospitalization_id', 'recorded_dttm','numerical_value', 'categorical_value','assessment_category']
 pat_at['assessment_category'] = pat_at['assessment_category'].str.lower()
 pat_at = pat_at[(pat_at['assessment_category'].isin(pat_assess_cats_rquired)) ][pat_at_col].reset_index(drop=True)
+pat_at = pc.standardize_datetime_tz(pat_at,['recorded_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 
 # %%
 pat_at['hospitalization_id'] = pat_at['hospitalization_id'].astype(str)
@@ -215,7 +219,7 @@ vit['hospitalization_id'] = vit['hospitalization_id'].astype(str)
 vit['hospitalization_id'] = vit['hospitalization_id'].map(hospitalization_to_block).astype(str)
 vit_col = ['hospitalization_id','recorded_dttm','vital_category','vital_value' ]
 vit['vital_category'] = vit['vital_category'].str.lower()
-
+vit = pc.standardize_datetime_tz(vit,['recorded_dttm'],pc.helper['your_site_timezone'],pc.helper['data_timezone'])
 vit = vit[(vit['hospitalization_id'].isin(required_id)) & (vit['vital_category'].isin(['map','heart_rate','sbp','dbp','spo2','respiratory_rate','weight_kg','height_cm'])) ][vit_col].reset_index(drop=True)
 
 vit['recorded_dttm_min'] = pc.getdttm(vit['recorded_dttm'])

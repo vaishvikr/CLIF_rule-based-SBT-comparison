@@ -21,7 +21,8 @@ cohort = pd.read_csv('../output/intermediate/study_cohort.csv')
 # %%
 if pc.helper['site_name']=='RUSH':
     cohort.loc[cohort['sbt_timepoint'] == '3-5 minute evaluation', 'pressure_support_set'] = 6.1
-    cohort.loc[cohort['sbt_timepoint'] == '3-5 minute evaluation', 'mode_category_bkp'] = 'Pressure Support/CPAP'
+    cohort.loc[cohort['sbt_timepoint'] == '3-5 minute evaluation', 'mode_category'] = 'Pressure Support/CPAP'
+    print('its a rush thing')
 
 
 # %% [markdown]
@@ -184,52 +185,32 @@ print('Hospital days with atleast one IMV event: ',final_df[final_df['device_cat
 print('Hospital days with atleast one IMV & ICU event: ',final_df[(final_df['device_category'] == 'imv') &
         (final_df['location_category'] == 'icu')]['hosp_id_day_key'].nunique())
 
+# %%
+fdf2 = final_df
+
 # %% [markdown]
 # ## FLIP Check
 
 # %%
-def process_diagnostic_flip_sbt(cohort):
-    """
-    Processes the cohort DataFrame with a diagnostic-first approach using vectorized operations and without 'failure_reason'.
-    
-    For eligible rows (eligible_day==1), the following conditions are required:
-      1. device_category must be 'imv'
-      2. location_category must be 'icu'
-      3. Composite condition: Either:
-           (a) mode_category contains 'pressure support' or 'cpap' AND both 
-               pressure_support_set and peep_set are <= 8,
-        OR (b) mode_name matches T-piece (using regex)
-    
-    Diagnostic columns are added for the specific condition that failed:
-      - cond_device_imv: set to the actual device_category if not 'imv'
-      - cond_location_icu: set to the actual location_category if not 'icu'
-      - cond_mode_ps_cpap, cond_ps_set_le8, cond_peep_set_le8, cond_mode_tpiece:
-          set based on the composite condition failure.
-      
-    Rows that pass all checks (i.e. diagnostics clear) are marked with flip_check_flag.
-    Then, within each (hospitalization_id, current_day) eligible group, flip candidates are 
-    evaluated: if the flip_time is before the group’s minimum IMV_Controlled_met_time or the 2‑minute
-    sustained condition is not met, appropriate reasons are recorded in flip_skip_reason.
-    
-    Returns:
-      - cohort: The original DataFrame with added diagnostic, flip evaluation, and EHR delivery columns.
-    """
+def process_diagnostic_flip_sbt_optimized_v2(cohort):
     # Ensure event_time is datetime.
     cohort['event_time'] = pd.to_datetime(cohort['event_time'])
     
-    # Initialize diagnostic and flip evaluation columns.
-    diag_cols = ['cond_device_imv', 'cond_location_icu', 'cond_mode_ps_cpap', 
+    # Preinitialize diagnostic and flip evaluation columns.
+    diag_cols = ['cond_device_imv', 'cond_location_icu', 'cond_mode_ps_cpap',
                  'cond_ps_set_le8', 'cond_peep_set_le8', 'cond_mode_tpiece',
                  'flip_skip_reason', 'first_flip_time']
     for col in diag_cols:
-        cohort[col] = np.nan
-
+        cohort[col] = None
+        
     # Initialize EHR delivery columns.
     for mins in [2, 30]:
         cohort[f"EHR_Delivery_{mins}mins"] = pd.NaT
 
-    # Create masks and compute conditions for eligible rows.
+    # --- Precompute diagnostic flags (vectorized) ---
     mask_eligible = cohort['eligible_day'] == 1
+    
+    # Normalize and compare strings.
     cond_imv = cohort['device_category'].fillna('').str.strip().str.lower() == 'imv'
     cond_icu = cohort['location_category'].fillna('').str.strip().str.lower() == 'icu'
     
@@ -238,77 +219,111 @@ def process_diagnostic_flip_sbt(cohort):
     cond_ps_le8 = cohort['pressure_support_set'] <= 8
     cond_peep_le8 = cohort['peep_set'] <= 8
     conditionA = cond_mode_ps & cond_ps_le8 & cond_peep_le8
-    
     mode_name_lower = cohort['mode_name'].fillna('').str.strip().str.lower()
     cond_mode_tpiece = mode_name_lower.str.match(r'^t[-]?piece$', na=False)
-    
     composite = conditionA | cond_mode_tpiece
-    # Overall pass condition for diagnostics.
     passed = cond_imv & cond_icu & composite
-    
+
     # Set diagnostic columns for eligible rows.
-    # Device diagnostic: Only set if device_category is not 'imv'.
     cohort.loc[mask_eligible & (~cond_imv), 'cond_device_imv'] = \
         cohort.loc[mask_eligible & (~cond_imv), 'device_category']
-    
-    # Location diagnostic: Only set if device is correct but location is not 'icu'.
     cohort.loc[mask_eligible & cond_imv & (~cond_icu), 'cond_location_icu'] = \
         cohort.loc[mask_eligible & cond_imv & (~cond_icu), 'location_category']
     
-    # For composite diagnostics, only consider rows that passed device and location.
     mask_composite_fail = mask_eligible & cond_imv & cond_icu & (~composite)
     cohort.loc[mask_composite_fail & (~cond_mode_ps), 'cond_mode_ps_cpap'] = \
         cohort.loc[mask_composite_fail & (~cond_mode_ps), 'mode_category']
-    
     mask_ps_fail = cohort['pressure_support_set'].isnull() | (cohort['pressure_support_set'] > 8)
     cohort.loc[mask_composite_fail & mask_ps_fail, 'cond_ps_set_le8'] = \
         cohort.loc[mask_composite_fail & mask_ps_fail, 'pressure_support_set']
-    
     mask_peep_fail = cohort['peep_set'].isnull() | (cohort['peep_set'] > 8)
     cohort.loc[mask_composite_fail & mask_peep_fail, 'cond_peep_set_le8'] = \
         cohort.loc[mask_composite_fail & mask_peep_fail, 'peep_set']
-    
     cohort.loc[mask_composite_fail & (~cond_mode_tpiece), 'cond_mode_tpiece'] = \
         cohort.loc[mask_composite_fail & (~cond_mode_tpiece), 'mode_name']
     
-    # Mark flip candidate rows based on diagnostics.
+    # Mark candidate rows.
     cohort['flip_check_flag'] = False
     cohort.loc[mask_eligible, 'flip_check_flag'] = passed[mask_eligible]
     
-    # Process each eligible group for flip evaluation.
-    eligible_groups = cohort[mask_eligible].groupby(['hospitalization_id', 'current_day'])
+    # Compute the minimum IMV_Controlled_met_time per eligible group.
+    cohort.loc[mask_eligible, 'min_met_time'] = (
+        cohort.loc[mask_eligible]
+        .groupby(['hospitalization_id', 'current_day'])['IMV_Controlled_met_time']
+        .transform('min')
+    )
     
-    for (hosp_id, curr_day), group in tqdm(eligible_groups, desc="Processing each Hosp & Day"):
-        group = group.copy()
-        candidate_indices = group[group['flip_check_flag']].index
-        ehr_2min_success = False
+    # --- Process each eligible group using vectorized operations ---
+    def process_group(group):
+        # Work on a copy sorted by event_time.
+        group = group.sort_values('event_time').copy()
+        n = len(group)
+        if n == 0:
+            return group
         
+        # Convert event_time to numpy array.
+        times = group['event_time'].values.astype('datetime64[ns]')
+        delta = np.timedelta64(2, 'm')
+        # Use searchsorted to find the boundary index for each row's 2-minute window.
+        boundaries = np.searchsorted(times, times + delta, side='right')
+        cnt_total = boundaries - np.arange(n)
+        group['cnt_total'] = cnt_total
+        
+        # Compute cumulative sum for flip_check_flag (converted to int).
+        flip_int = group['flip_check_flag'].astype(int).values
+        cumsum = np.cumsum(flip_int)
+        cnt_pass = np.empty(n, dtype=int)
+        for i in range(n):
+            start = i
+            end = boundaries[i] - 1
+            cnt_pass[i] = cumsum[end] - (cumsum[start-1] if start > 0 else 0)
+        group['cnt_pass'] = cnt_pass
+        
+        # Compute sustained condition for each row.
+        group['sustained'] = (group['event_time'] > group['min_met_time']) & \
+                             (group['cnt_total'] == group['cnt_pass']) & \
+                             group['flip_check_flag']
+        
+        # Now iterate only over candidate rows (flip_check_flag True) in order.
+        candidate_indices = group.index[group['flip_check_flag']].tolist()
         for idx in candidate_indices:
-            if ehr_2min_success:
-                break
-            flip_time = group.loc[idx, 'event_time']
-            group.loc[idx, 'first_flip_time'] = flip_time
-            
-            # Flip must occur AFTER the group's minimum IMV_Controlled_met_time.
-            if flip_time <= group['IMV_Controlled_met_time'].min():
-                group.loc[idx, 'flip_skip_reason'] = "Flip before IMV_Controlled_met_time"
+            # Set first_flip_time on the candidate row.
+            group.at[idx, 'first_flip_time'] = group.at[idx, 'event_time']
+            # If the candidate occurs before the min_met_time, mark the failure reason.
+            if group.at[idx, 'event_time'] <= group.at[idx, 'min_met_time']:
+                group.at[idx, 'flip_skip_reason'] = "Flip before IMV_Controlled_met_time"
+                # Continue with next candidate in the same group.
                 continue
-            
-            # Check the 2‑minute sustained condition.
-            time_window_2min = flip_time + pd.Timedelta(minutes=2)
-            window_mask_2min = (group['event_time'] >= flip_time) & (group['event_time'] <= time_window_2min)
-            if group.loc[window_mask_2min, 'flip_check_flag'].all():
-                ehr_idx = group[group['event_time'] >= time_window_2min].index.min()
-                if pd.notna(ehr_idx):
-                    group.loc[ehr_idx, "EHR_Delivery_2mins"] = time_window_2min
-                    ehr_2min_success = True
+            else:
+                # Candidate event_time is after the min_met_time.
+                if group.at[idx, 'sustained']:
+                    # If sustained, mark success (EHR_Delivery_2mins = 1) on this candidate row.
+                    group.at[idx, 'EHR_Delivery_2mins'] = 1
+                    group.at[idx, 'flip_skip_reason'] = None
+                    # Once a successful candidate is found, stop evaluating further candidates.
                     break
-            group.loc[idx, 'flip_skip_reason'] = "ehr_delivery_2min not possible"
-        
-        cohort.loc[group.index, group.columns] = group
+                else:
+                    # Not sustained: mark failure reason on this candidate row.
+                    group.at[idx, 'flip_skip_reason'] = "ehr_delivery_2min not possible"
+                    # Continue to the next candidate.
+                    continue
+        return group
 
+    # Apply the per-group processing only on eligible rows.
+    eligible_df = cohort[mask_eligible].copy()
+    processed = eligible_df.groupby(['hospitalization_id', 'current_day'], group_keys=False).apply(process_group)
+    
+    # Update only the eligible rows in the original DataFrame.
+    cohort.update(processed)
+    
+    # Optionally, remove helper columns.
+    helper_cols = ['cnt_total', 'cnt_pass', 'sustained', 'min_met_time']
+    cohort.drop(columns=[col for col in helper_cols if col in cohort.columns], inplace=True)
+    
     return cohort
-final_df = process_diagnostic_flip_sbt(final_df)
+
+# Example usage:
+final_df = process_diagnostic_flip_sbt_optimized_v2(final_df)
 
 
 # %%
@@ -710,8 +725,5 @@ combined_summary_df = pd.concat(hospital_summary_list, ignore_index=True)
 combined_summary_df.to_csv(f"../output/final/event_time_distribution_summary.csv", index=False)
 
 print("Overlay plots created and summary CSV saved.")
-
-# %%
-
 
 

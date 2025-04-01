@@ -328,7 +328,43 @@ def stitch_encounters(hospitalization, adt, time_interval=6):
     
     return df
 
+def standardize_datetime_tz(df, dttm_columns, your_timezone , data_timezone='NA'):
+    """
+    Standardize datetime columns in a DataFrame:
+    - Converts to datetime if not already 
+    - Ensures specified timezone for all timestamps
+    - Removes timezone information after conversion
+    - Standardizes format to '%Y-%m-%d %H:%M:%S'
+    
+    Parameters:
+        df (pd.DataFrame): The DataFrame containing the data.
+        dttm_columns (str or list): A column name or list of column names to standardize.
+        timezone (str): The timezone to convert timestamps to. Defaults to 'UTC'.
+    
+    Returns:
+        pd.DataFrame: DataFrame with standardized datetime columns.
+    """
+    if isinstance(dttm_columns, str):
+        dttm_columns = [dttm_columns]  # Convert single column name to list
+    
+    if your_timezone==data_timezone:
+        return df
 
+    for col in dttm_columns:
+        if col in df.columns:
+            # Convert to datetime if not already
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+            # Check if timezone-aware
+            if df[col].dt.tz is None:
+                print(f"Column {col} is timezone aware: {df[col].dt.tz}")
+                df[col] = df[col].dt.tz_localize(your_timezone, ambiguous='NaT', nonexistent='shift_forward')
+            else:
+                df[col] = df[col].dt.tz_convert(your_timezone)
+            # Remove timezone and convert to standard format
+            df[col] = df[col].dt.tz_convert(None)
+        else:
+            print(f"Couldn't find {col} column in this df")
+    return df
 
 helper = load_config()
 print(helper)
