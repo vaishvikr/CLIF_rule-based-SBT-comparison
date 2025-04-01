@@ -1,4 +1,4 @@
-# CLIF Rule based SAT comparison
+# CLIF Rule based SBT comparison
 
 ## Objective
 
@@ -34,28 +34,26 @@ Output: One table1 file and One stats file [`output/final`](../output/README.md)
 
 ## Detailed Instructions for running the project
 
-## 1. Setup Project Environment
+## 1. Update `config/config.json`
+
+Follow instructions in the [config/README.md](config/README.md) file for detailed configuration steps.
+
+## 2. Setup & RUN Project Environment
 
 Example for Python:
 
 ```
 if Mac/Linux:
-python3 -m venv .satsbt
-source .satsbt/bin/activate
-pip install -r requirements.txt
+Open python on terminal
+& run setup_mac_or_linux.sh
 
 if Windows:
-python -m venv .satsbt_ATS24
-call .satsbt_ATS24\Scripts\activate.bat
-pip install -r requirements.txt
+Open python on terminal
+& run setup_windows.sh
 ```
 
-## 2. Update `config/config.json`
+## 3. Error?
 
-Follow instructions in the [config/README.md](config/README.md) file for detailed configuration steps.
-
-## 3. Run code
-
-Detailed instructions on the code workflow are provided in the [code directory](code/README.md)
+Run the 01 & 02 notebooks cell by cell to get where the code is failing
 
 ---
