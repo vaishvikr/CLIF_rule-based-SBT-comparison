@@ -25,3 +25,5 @@ CLIF_*.fst
 .satsbt
 #dev nb
 temp.ipynb
+.SBT
+*.png

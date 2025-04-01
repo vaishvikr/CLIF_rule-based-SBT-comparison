@@ -1,10 +1,11 @@
 pandas
 numpy
+tqdm
 matplotlib
 seaborn
+scikit-learn
 duckdb
 jupyter
 ipykernel
 tqdm
-tableone
 joblib
