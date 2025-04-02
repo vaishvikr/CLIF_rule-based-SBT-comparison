@@ -1,0 +1,7 @@
+{
+    "site_name": "RUSH",
+    "tables_path": "C:/Users/vchaudha/Downloads/rush_parquet/",
+    "file_type": "parquet",
+    "data_timezone" : "US/Central",
+    "your_site_timezone" : "US/Central" 
+}
