@@ -176,6 +176,7 @@ final_df = process_cohort_conditions(cohort)
 
 # %%
 # Print statistics
+print('By n = Days')
 total_days = final_df['hosp_id_day_key'].nunique()
 print('Total number of days for eval in cohort:', total_days)
 eligible_days = final_df[final_df['eligible_day'] == 1]['hosp_id_day_key'].nunique()
@@ -185,8 +186,15 @@ print('Hospital days with atleast one IMV event: ',final_df[final_df['device_cat
 print('Hospital days with atleast one IMV & ICU event: ',final_df[(final_df['device_category'] == 'imv') &
         (final_df['location_category'] == 'icu')]['hosp_id_day_key'].nunique())
 
-# %%
-fdf2 = final_df
+print('By n = Encounter')
+h_total_days = final_df['hospitalization_id'].nunique()
+print('Total number of days for eval in cohort:', h_total_days)
+h_eligible_days = final_df[final_df['eligible_day'] == 1]['hospitalization_id'].nunique()
+h_percentage = (h_eligible_days / h_total_days) * 100 if h_total_days > 0 else 0
+print(f"Eligible days: {h_eligible_days} / {h_total_days} ({h_percentage:.2f}%)")
+print('Hospital days with atleast one IMV event: ',final_df[final_df['device_category'] == 'imv' ]['hospitalization_id'].nunique())
+print('Hospital days with atleast one IMV & ICU event: ',final_df[(final_df['device_category'] == 'imv') &
+        (final_df['location_category'] == 'icu')]['hospitalization_id'].nunique())
 
 # %% [markdown]
 # ## FLIP Check
@@ -349,34 +357,62 @@ datetime_columns = [
     'EHR_Delivery_2mins'
 ]
 
-for col in datetime_columns:
-    if col in final_df.columns:
-        final_df[col] = final_df[col].notna().astype(int)
+# for col in datetime_columns:
+#     if col in final_df.columns:
+#         final_df[col] = final_df[col].notna().astype(int)
 
 # Group by hosp_id_day_key and aggregate using max
+# grouped_df = final_df.groupby('hosp_id_day_key').agg({
+#     'hospital_id' : lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan,
+#     'eligible_day':'max',
+#     'EHR_Delivery_2mins': 'max',
+#     'sat_screen_pass_fail': 'max',
+#     'sat_delivery_pass_fail': 'max',
+#     'sbt_screen_pass_fail': 'max',
+#     'sbt_delivery_pass_fail': 'max',
+#     # 'sbt_bkp':'min',
+#     'flip_skip_reason': lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan
+# }).reset_index().fillna(0)
+
+# mat_df = grouped_df[grouped_df['eligible_day']==1]
+
+
+# Define a helper function to flag extubation
+def check_extubation(series):
+    found_imv = False
+    # Iterate over non-missing values in order
+    for device in series.dropna():
+        if device == "imv":
+            found_imv = True
+        elif found_imv and device != "imv":
+            return 1  # Transition occurred
+    return 0  # No transition from IMV to a non-IMV device
+
+# Group and aggregate the DataFrame including the extubation check
 grouped_df = final_df.groupby('hosp_id_day_key').agg({
-    'hospital_id' : lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan,
-    'eligible_day':'max',
+    'hospital_id': lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan,
+    'eligible_day': 'max',
     'EHR_Delivery_2mins': 'max',
     'sat_screen_pass_fail': 'max',
     'sat_delivery_pass_fail': 'max',
     'sbt_screen_pass_fail': 'max',
     'sbt_delivery_pass_fail': 'max',
-    # 'sbt_bkp':'min',
-    'flip_skip_reason': lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan
-}).reset_index().fillna(0)
+    # 'sbt_bkp': 'min',  # Uncomment if needed
+    'flip_skip_reason': lambda x: x.dropna().iloc[-1] if x.dropna().size > 0 else np.nan,
+    'device_category': check_extubation  # Apply the extubation logic
+}).reset_index()
 
+# Rename the aggregated device_category column to extubated and fill NaN values
+grouped_df = grouped_df.rename(columns={'device_category': 'extubated'}).fillna(0)
 mat_df = grouped_df[grouped_df['eligible_day']==1]
 
 # %%
 sbt_S = grouped_df[(grouped_df['sbt_screen_pass_fail']==1) & (grouped_df['eligible_day']==1)].hosp_id_day_key.unique()
 sbt_D = grouped_df[(grouped_df['sbt_delivery_pass_fail']==1) & (grouped_df['eligible_day']==1)].hosp_id_day_key.unique()
 ehr_2min = grouped_df[(grouped_df['EHR_Delivery_2mins']==1) & (grouped_df['eligible_day']==1)].hosp_id_day_key.unique()
-
 print(f"Number of unique days passing SBT Screen: {len(sbt_S)}")
 print(f"Number of unique days passing SBT Delivery: {len(sbt_D)}")
 print(f"Number of unique days with EHR Delivery in 2 minutes: {len(ehr_2min)}")
-
 
 # %%
 hospital_ids = mat_df['hospital_id'].unique()
@@ -730,5 +766,81 @@ combined_summary_df = pd.concat(hospital_summary_list, ignore_index=True)
 combined_summary_df.to_csv(f"../output/final/event_time_distribution_summary.csv", index=False)
 
 print("Overlay plots created and summary CSV saved.")
+
+# %%
+# --- Calculate statistics from final_df ---
+
+# By n = Days
+total_days = final_df['hosp_id_day_key'].nunique()
+eligible_days = final_df[final_df['eligible_day'] == 1]['hosp_id_day_key'].nunique()
+percentage = (eligible_days / total_days) * 100 if total_days > 0 else 0
+imv_days = final_df[final_df['device_category'] == 'imv']['hosp_id_day_key'].nunique()
+imv_icu_days = final_df[(final_df['device_category'] == 'imv') & (final_df['location_category'] == 'icu')]['hosp_id_day_key'].nunique()
+
+# By n = Encounter
+h_total_days = final_df['hospitalization_id'].nunique()
+h_eligible_days = final_df[final_df['eligible_day'] == 1]['hospitalization_id'].nunique()
+h_percentage = (h_eligible_days / h_total_days) * 100 if h_total_days > 0 else 0
+h_imv_days = final_df[final_df['device_category'] == 'imv']['hospitalization_id'].nunique()
+h_imv_icu_days = final_df[(final_df['device_category'] == 'imv') & (final_df['location_category'] == 'icu')]['hospitalization_id'].nunique()
+
+# --- Calculate statistics from mat_df ---
+
+# Distribution of EHR_Delivery_2mins for extubated == 1 (in percentages)
+ehr_delivery_counts = (
+    mat_df[mat_df['extubated'] == 1]['EHR_Delivery_2mins']
+    .value_counts(normalize=True) * 100
+)
+
+# Distribution of sbt_delivery_pass_fail for extubated == 1 (in percentages)
+sbt_delivery_counts = (
+    mat_df[mat_df['extubated'] == 1]['sbt_delivery_pass_fail']
+    .value_counts(normalize=True) * 100
+)
+
+# --- Print the statistics ---
+
+print('By n = Days')
+print('Total number of days for eval in cohort:', total_days)
+print(f"Eligible days: {eligible_days} / {total_days} ({percentage:.2f}%)")
+print('Hospital days with at least one IMV event:', imv_days)
+print('Hospital days with at least one IMV & ICU event:', imv_icu_days)
+
+print('\nBy n = Encounter')
+print('Total number of days for eval in cohort:', h_total_days)
+print(f"Eligible days: {h_eligible_days} / {h_total_days} ({h_percentage:.2f}%)")
+print('Hospital days with at least one IMV event:', h_imv_days)
+print('Hospital days with at least one IMV & ICU event:', h_imv_icu_days)
+
+print('\nEHR_Delivery_2mins distribution (for extubated == 1):')
+print(ehr_delivery_counts)
+
+print('\nsbt_delivery_pass_fail distribution (for extubated == 1):')
+print(sbt_delivery_counts)
+
+# --- Create a summary DataFrame for the final_df stats ---
+stats_data = {
+    'Metric': [
+        'total_days', 'eligible_days', 'eligible_percentage', 
+        'imv_days', 'imv_icu_days', 
+        'h_total_days', 'h_eligible_days', 'h_eligible_percentage', 
+        'h_imv_days', 'h_imv_icu_days'
+    ],
+    'Value': [
+        total_days, eligible_days, percentage,
+        imv_days, imv_icu_days,
+        h_total_days, h_eligible_days, h_percentage,
+        h_imv_days, h_imv_icu_days
+    ]
+}
+
+stats_df = pd.DataFrame(stats_data)
+
+print('\nCombined statistics DataFrame:')
+print(stats_df)
+stats_df.to_csv('../output/final/stats_df.csv')
+
+# %%
+
 
 
