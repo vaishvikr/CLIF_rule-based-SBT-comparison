@@ -580,11 +580,10 @@ for hosp in hospital_ids:
     # Calculate total_failures as the sum of UniqueKeys across all steps for this hospital
     total_failures = detailed_summary_df['UniqueKeys'].sum()
     
-    # Replace eligible_days with the actual total of eligible days for the hospital
-    eligible_days = 100  # Update this value as needed
+   
     
     # Add "% Per 100" and "% of Total" columns
-    detailed_summary_df['% Per 100'] = detailed_summary_df['UniqueKeys'].apply(
+    detailed_summary_df['% by eligible_days'] = detailed_summary_df['UniqueKeys'].apply(
         lambda x: round((x / eligible_days) * 100, 2)
     )
     detailed_summary_df['% of Total'] = detailed_summary_df['UniqueKeys'].apply(
@@ -650,7 +649,7 @@ for hosp in hospital_ids:
         summary_data.append({
             'Failure Reason': reason,
             'Count': count,
-            'Per 100': round((count / eligible_days) * 100, 2),
+            '% by eligible_days': round((count / eligible_days) * 100, 2),
             '% of Total (out of total failed cases)': round((count / total_failures_ind) * 100, 2) if total_failures_ind else 0,
             'Value Counts': value_counts_map[reason]
         })
@@ -663,6 +662,12 @@ for hosp in hospital_ids:
     print(f"Saved independent summary for hospital {hosp} to {ind_output_filename}\n")
     print(hosp, independent_summary_df)
     print()
+
+# %%
+detailed_summary_df
+
+# %%
+independent_summary_df
 
 # %% [markdown]
 # #### Plots
