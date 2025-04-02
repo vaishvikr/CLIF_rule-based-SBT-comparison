@@ -21,6 +21,9 @@ adt.head()
 # %%
 hosp = pc.load_data('clif_hospitalization')
 hosp['hospitalization_id'] = hosp['hospitalization_id'].astype(str)
+if 'hospitalization_joined_id' not in hosp.columns:
+    hosp['hospitalization_joined_id'] = hosp['hospitalization_id']
+
 hosp['hospitalization_joined_id'] = hosp['hospitalization_joined_id'].astype(str)
 hosp['admission_dttm'] = pc.getdttm(hosp['admission_dttm'])
 hosp['discharge_dttm'] = pc.getdttm(hosp['discharge_dttm'])
