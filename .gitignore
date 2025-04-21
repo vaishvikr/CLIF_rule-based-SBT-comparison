@@ -27,3 +27,5 @@ CLIF_*.fst
 temp.ipynb
 .SBT
 *.png
+
+code/backupcode

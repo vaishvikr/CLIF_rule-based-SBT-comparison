@@ -3,6 +3,8 @@ import os
 import duckdb
 import pandas as pd
 import numpy as np
+import pytz
+
 
 def load_config():
     json_path = '../config/config.json'
@@ -328,26 +330,12 @@ def stitch_encounters(hospitalization, adt, time_interval=6):
     
     return df
 
-def standardize_datetime_tz(df, dttm_columns, your_timezone , data_timezone='NA'):
-    """
-    Standardize datetime columns in a DataFrame:
-    - Converts to datetime if not already 
-    - Ensures specified timezone for all timestamps
-    - Removes timezone information after conversion
-    - Standardizes format to '%Y-%m-%d %H:%M:%S'
-    
-    Parameters:
-        df (pd.DataFrame): The DataFrame containing the data.
-        dttm_columns (str or list): A column name or list of column names to standardize.
-        timezone (str): The timezone to convert timestamps to. Defaults to 'UTC'.
-    
-    Returns:
-        pd.DataFrame: DataFrame with standardized datetime columns.
-    """
+def standardize_datetime_tz(df, dttm_columns, your_timezone):
+   
     if isinstance(dttm_columns, str):
         dttm_columns = [dttm_columns]  # Convert single column name to list
     
-    if your_timezone==data_timezone:
+    if your_timezone==None:
         return df
 
     for col in dttm_columns:
@@ -364,6 +352,53 @@ def standardize_datetime_tz(df, dttm_columns, your_timezone , data_timezone='NA'
             df[col] = df[col].dt.tz_convert(None)
         else:
             print(f"Couldn't find {col} column in this df")
+    return df
+
+
+def convert_datetime_columns_to_site_tz(df, site_tz_str, verbose=True):
+    """
+    Convert all datetime columns in the DataFrame to the specified site timezone.
+
+    Parameters:
+    - df (pd.DataFrame): Input DataFrame.
+    - site_tz_str (str): Timezone string, e.g., "America/New_York".
+    - verbose (bool): Whether to print detailed output (default: True).
+
+    Returns:
+    - pd.DataFrame: Modified DataFrame with datetime columns converted.
+    """
+    site_tz = pytz.timezone(site_tz_str)
+
+    # Identify datetime-related columns
+    dttm_columns = [col for col in df.columns if 'dttm' in col]
+
+    for col in dttm_columns:
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+
+        if pd.api.types.is_datetime64tz_dtype(df[col]):
+            current_tz = df[col].dt.tz
+            if current_tz == site_tz:
+                if verbose:
+                    print(f"{col}: Already in your timezone ({current_tz}), no conversion needed.")
+            elif current_tz == pytz.UTC:
+                df[col] = df[col].dt.tz_convert(site_tz)
+                if verbose:
+                    print(f"{col}: Converted from UTC to your timezone ({site_tz}).")
+            else:
+                df[col] = df[col].dt.tz_convert(site_tz)
+                if verbose:
+                    print(f"{col}: Your timezone is {current_tz}, Converting to your site timezone ({site_tz}).")
+        elif pd.api.types.is_datetime64_any_dtype(df[col]):
+            if verbose:
+                df[col] = df[col].dt.tz_localize(site_tz, ambiguous=True, nonexistent='shift_forward')
+                print(f"WARNING: {col}: Naive datetime, NOT converting. Assuming it's in your LOCAL ZONE. Please check ETL!")
+        else:
+            if verbose:
+                print(f"WARNING: {col}: Not a datetime column. Please check ETL and run again!")
+
+        if verbose:
+            print(f"{col}: null count = {df[col].isna().sum()}")
+
     return df
 
 helper = load_config()

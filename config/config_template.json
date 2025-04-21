@@ -1,7 +1,6 @@
 {
-    "site_name": "RUSH",
-    "tables_path": "C:/Users/vchaudha/Downloads/rush_parquet/",
+    "site_name": "ZYX",
+    "tables_path": "C:/CBA/Downloads/clif/",
     "file_type": "parquet",
-    "data_timezone" : "If dont know its ok",
     "your_site_timezone" : "US/Central" 
 }
