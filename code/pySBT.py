@@ -17,6 +17,7 @@ from sklearn.metrics import (
     classification_report,
 )
 import warnings
+from typing import Optional
 
 warnings.filterwarnings("ignore")
 from tableone import TableOne
@@ -384,6 +385,26 @@ def manual_categorical_tableone(df, categorical_cols):
                               columns=["Variable", "Category", "N", "Count", "Percent"])
     return summary_df
 
+
+def apply_outlier_thresholds(df, col_name, min_val, max_val):
+    """
+    Helper function to clamp column values between min and max thresholds, 
+    setting values outside range to NaN.
+    
+    Parameters:
+        df (pd.DataFrame): DataFrame containing the column to process
+        col_name (str): Name of the column to apply thresholds to
+        min_val (float): Minimum allowed value (inclusive)
+        max_val (float): Maximum allowed value (inclusive)
+        
+    Returns:
+        None: Modifies the DataFrame in place by updating the specified column
+    """
+    df[col_name] = df[col_name].where(df[col_name].between(min_val, 
+                                                           max_val, 
+                                                           inclusive='both'), 
+                                                           np.nan)
+    
 print('Imported SBT Helper!')
 
 

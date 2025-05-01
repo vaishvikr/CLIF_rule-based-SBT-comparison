@@ -39,12 +39,41 @@ echo %CYAN%Changing directory to code folder...%RESET%
 cd code
 
 echo %YELLOW%==================================================%RESET%
-echo %CYAN%Running Python script: code/01_cohort_id_script.py...%RESET%
-python 01_cohort_id_script.py
+echo %CYAN% Execute 00_cohort_id.ipynb and stream its cell output only%RESET%
+jupyter nbconvert --to script --stdout "01_cohort_id_script.ipynb" | python
+
+setlocal enabledelayedexpansion
+
+REM ── 1) Record start time in seconds since midnight ──────────────
+for /f "tokens=1-3 delims=:.," %%h in ("%time%") do (
+  set /A startSec=%%h*3600 + %%i*60 + %%j
+)
+
+REM ── 2) Launch each notebook in parallel, signaling when done ────
+start "" /B cmd /C "echo ===== Execute 02_SBT_Standard ===== & jupyter nbconvert --to script 02_SBT_Standard.ipynb --stdout ^| python & WAITFOR /SI JOB1_DONE"
+start "" /B cmd /C "echo ===== Execute 02_SBT_Both_stabilities ===== & jupyter nbconvert --to script 02_SBT_Both_stabilities.ipynb --stdout ^| python & WAITFOR /SI JOB2_DONE"
+start "" /B cmd /C "echo ===== Execute 02_SBT_Hemodynamic_Stability ===== & jupyter nbconvert --to script 02_SBT_Hemodynamic_Stability.ipynb --stdout ^| python & WAITFOR /SI JOB3_DONE"
+start "" /B cmd /C "echo ===== Execute 02_SBT_Respiratory_Stability ===== & jupyter nbconvert --to script 02_SBT_Respiratory_Stability.ipynb --stdout ^| python & WAITFOR /SI JOB4_DONE"
+
+REM ── 3) Wait for all four signals ─────────────────────────────────
+for %%S in (JOB1_DONE JOB2_DONE JOB3_DONE JOB4_DONE) do (
+  waitfor %%S >nul
+)
+
+REM ── 4) Record end time and compute elapsed ───────────────────────
+for /f "tokens=1-3 delims=:.," %%h in ("%time%") do (
+  set /A endSec=%%h*3600 + %%i*60 + %%j
+)
+set /A elapsed=endSec - startSec
+echo(
+echo All notebooks done in %elapsed% seconds!
+pause
+
 
 echo %YELLOW%==================================================%RESET%
-echo %CYAN%Running Python script: code/02_project_analysis_SBT_script.py...%RESET%
-python 02_project_analysis_SBT_optimized_script.py
+echo %CYAN%Execute 01_SAT_standard.ipynb and stream its cell output only%RESET%
+jupyter nbconvert --to script --stdout "code\01_SAT_standard.ipynb" | python
+
 
 echo %YELLOW%==================================================%RESET%
 echo %GREEN%All tasks completed.%RESET%

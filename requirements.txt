@@ -3,7 +3,7 @@ pandas==2.2.3
 tqdm==4.67.1
 matplotlib==3.10.1
 seaborn==0.13.2
-sklearn==1.6.1
+scikit-learn
 tableone==0.9.4
 pytz==2025.2
 duckdb==1.2.1
