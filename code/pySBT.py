@@ -93,7 +93,7 @@ def process_cohort_conditions(cohort, How ):
 
     
     
-    for (hosp_id, curr_day), day_group in tqdm(groups, desc="Processing each Hosp & Day"):
+    for (hosp_id, curr_day), day_group in tqdm(groups, desc="Evaluating SBT eligibility per hospital-day group"):
 
         cohort.loc[day_group.index, 'vent_day'] = 1
         # --- Condition 1: IMV in controlled mode ---

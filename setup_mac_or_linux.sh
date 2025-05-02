@@ -1,51 +1,68 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# setup.sh — Bash version of setup.bat
+# Stop on first error
+set -e
 
-# setup.sh with colored output using ANSI escape codes
-
-# Define color variables
+# ── ANSI colour codes ──────────────────────────────────────────────────────────
 YELLOW="\033[33m"
 CYAN="\033[36m"
 GREEN="\033[32m"
 RESET="\033[0m"
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Creating virtual environment (.SBT)...${RESET}"
-python3 -m venv .SBT
+separator() { echo -e "${YELLOW}==================================================${RESET}"; }
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Activating virtual environment...${RESET}"
-source .SBT/bin/activate
+# ── 1. Create virtual environment ──────────────────────────────────────────────
+separator
+echo -e "${CYAN}Creating virtual environment (.SBT)…${RESET}"
+python -m venv .SBT
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Upgrading pip...${RESET}"
+# ── 2. Activate virtual environment ────────────────────────────────────────────
+separator
+echo -e "${CYAN}Activating virtual environment…${RESET}"
+# shellcheck source=/dev/null
+source .SBT/bin/activate   # (Unix path; note the forward slashes)
+
+# ── 3. Upgrade pip ─────────────────────────────────────────────────────────────
+separator
+echo -e "${CYAN}Upgrading pip…${RESET}"
 python -m pip install --upgrade pip
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Installing required packages...${RESET}"
+# ── 4. Install required packages ───────────────────────────────────────────────
+separator
+echo -e "${CYAN}Installing required packages…${RESET}"
 pip install -r requirements.txt
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Installing Jupyter and IPykernel...${RESET}"
+# ── 5. Install Jupyter + IPython kernel ────────────────────────────────────────
+separator
+echo -e "${CYAN}Installing Jupyter and IPykernel…${RESET}"
 pip install jupyter ipykernel
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Registering the virtual environment as a Jupyter kernel...${RESET}"
-python -m ipykernel install --user --name=.SBT --display-name="Python (SBT 2025)"
+separator
+echo -e "${CYAN}Registering the virtual environment as a Jupyter kernel…${RESET}"
+python -m ipykernel install --user --name ".SBT" --display-name "Python (SBT 2025)"
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Changing directory to code folder...${RESET}"
-cd code || exit
+# ── 6. Change to code directory ────────────────────────────────────────────────
+separator
+echo -e "${CYAN}Changing directory to code folder…${RESET}"
+cd code || { echo "❌  'code' directory not found."; exit 1; }
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Running Python script: code/01_cohort_id_script.py...${RESET}"
-python 01_cohort_id_script.py
+# ── 7. Run notebooks, streaming cell output ────────────────────────────────────
+for nb in \
+    "00_cohort_id.ipynb" \
+    "01_SAT_standard.ipynb" \
+    "02_SBT_Standard.ipynb" \
+    "02_SBT_Both_stabilities.ipynb" \
+    "02_SBT_Hemodynamic_Stability.ipynb" \
+    "02_SBT_Respiratory_Stability.ipynb"
+do
+    separator
+    echo -e "${CYAN}Executing ${nb} and streaming its cell output…${RESET}"
+    jupyter nbconvert --to script --stdout "${nb}" | python
+done
 
-echo -e "${YELLOW}==================================================${RESET}"
-echo -e "${CYAN}Running Python script: code/02_project_analysis_SBT_script.py...${RESET}"
-python 02_project_analysis_SBT_optimized_script.py
-
-echo -e "${YELLOW}==================================================${RESET}"
+# ── 8. Finish ──────────────────────────────────────────────────────────────────
+separator
 echo -e "${GREEN}All tasks completed.${RESET}"
 
-# Optional pause-like behavior
-read -p "Press [Enter] to continue..."
+# Keep the window open if run interactively (optional)
+read -rp "Press [Enter] to exit…"

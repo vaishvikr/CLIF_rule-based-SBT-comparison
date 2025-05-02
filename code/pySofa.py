@@ -139,6 +139,14 @@ def compute_sofa(
         values='lab_value_numeric'
     ).reset_index()
 
+    # Ensure all vp_meds are present in the columns
+    for lab in lab_categories:
+        if lab not in lab_summary.columns:
+            print(
+                'WARNING: Your CLIF dont have : ', Lab, ' PLEASE check your ETL!'
+            )
+            lab_summary[med] = np.nan
+
     # Rename columns to indicate aggregation function used
     lab_summary = lab_summary.rename(columns={
         "po2_arterial": "po2_arterial_min",
@@ -341,6 +349,14 @@ def compute_sofa(
         columns='med_category',
         values='med_dose_converted'
     ).reset_index()
+
+    # Ensure all vp_meds are present in the columns
+    for med in vp_meds:
+        if med not in meds_summary.columns:
+            print(
+                'WARNING: Your CLIF dont have : ', med, ' PLEASE check your ETL!'
+            )
+            meds_summary[med] = np.nan
     # Add _min suffix to all columns except id_col
     # meds_summary.columns = [col if col == id_col else f"{col}_max" for col in meds_summary.columns]
 

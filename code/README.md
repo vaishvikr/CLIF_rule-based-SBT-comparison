@@ -15,20 +15,7 @@ call .satsbt_ATS24\Scripts\activate.bat
 pip install -r requirements.txt
 ```
 
-1. Run the cohort_identification script ['code/01_cohort_id.ipynb'](code/01_cohort_id.ipynb)
-   This script should:
-
-   - Apply inclusion and exclusion criteria
-   - Select required fields from each table
-   - Filter tables to include only required observations
-
-   Expected outputs:
-
-   - A file will be created at ../output/intermediate/study_cohort.csv
-
-2. Run the analysis script [`code/02_project_analysis.ipynb`](code/02_project_analysis.ipynb)
-   This script should contain the main analysis code for the project.
-
-   Input: ../output/intermediate/study_cohort.csv
-
-   Output: One table1 file and One stats file [`output/final`](../output/README.md)
+- Open and run the following notebooks **you can run 01 & 02 notebooks parallelly**:
+  1. `00_*.ipynb`
+  2. `01_*.ipynb`
+  3. `02_*.ipynb`

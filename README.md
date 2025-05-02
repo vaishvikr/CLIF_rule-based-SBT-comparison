@@ -8,13 +8,6 @@ The aim of this project is to evaluate compliance in the delivery of SBT within 
 
 Please refer to the online [CLIF data dictionary](https://clif-consortium.github.io/website/data-dictionary.html), [ETL tools](https://github.com/clif-consortium/CLIF/tree/main/etl-to-clif-resources), and [specific table contacts](https://github.com/clif-consortium/CLIF?tab=readme-ov-file#relational-clif) for more information on constructing the required tables and fields. List all required tables for the project here, and provide a brief rationale for why they are required.
 
-# ICU & IMV Patient Cohort Extraction Project
-
-## Overview
-
-This project extracts and analyzes data on patients with ICU admissions and invasive mechanical ventilation (IMV) within a defined study period. It uses standardized CLIF tables to build the cohort and generate descriptive statistics and summary tables.
-
----
 
 ## Required CLIF Tables
 
@@ -97,6 +90,9 @@ setup_windows.bat
 ```
 
 ### 3. Troubleshooting
+
+You can run notebooks one by one:
+Refer to [`code/README.md`](code/README.md) for step-by-step instructions.
 
 If you encounter an error:
 
