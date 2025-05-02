@@ -8,52 +8,102 @@ The aim of this project is to evaluate compliance in the delivery of SBT within 
 
 Please refer to the online [CLIF data dictionary](https://clif-consortium.github.io/website/data-dictionary.html), [ETL tools](https://github.com/clif-consortium/CLIF/tree/main/etl-to-clif-resources), and [specific table contacts](https://github.com/clif-consortium/CLIF?tab=readme-ov-file#relational-clif) for more information on constructing the required tables and fields. List all required tables for the project here, and provide a brief rationale for why they are required.
 
-Example:
+# ICU & IMV Patient Cohort Extraction Project
 
-The following tables are required:
+## Overview
 
-1. **patient**: `patient_id`, `race_category`, `ethnicity_category`, `sex_category`
-2. **hospitalization**: `patient_id`, `hospitalization_id`, `admission_dttm`, `discharge_dttm`, `age_at_admission`
-3. **medication_admin_continuous**: `hospitalization_id`, `admin_dttm`, `med_category`, `med_dose`
-   - `med_category` = 'norepinephrine', 'epinephrine', 'phenylephrine', 'vasopressin','dopamine','dobutamine','milrinone','isoproterenol'
-4. **respiratory_support**: `hospitalization_id`, `recorded_dttm`, `device_category`
-5. **patient_assessments**: `hospitalization_id`, `recorded_dttm`, `assessment_category`,`numerical_value`, `categorical_value`
-   - `assessment_category` = 'sbt_delivery_pass_fail','sbt_screen_pass_fail'
-6. **vitals**: `hospitalization_id`, `recorded_dttm`, `vitals_category`, `vitals_value`
+This project extracts and analyzes data on patients with ICU admissions and invasive mechanical ventilation (IMV) within a defined study period. It uses standardized CLIF tables to build the cohort and generate descriptive statistics and summary tables.
 
-## Cohort identification
+---
 
-Study period: January 1, 2020 to December 31, 2021 (2 years) Inclusion criteria:
+## Required CLIF Tables
 
-Patients with at least one ICU admission & IMV during the study period (2020-2021)
-Age >= 18 years at the time of initial hospital admission
+The following tables and fields are required:
 
-## Expected Results
+1. **`patient`**
+   - Fields: `patient_id`, `race_category`, `ethnicity_category`, `sex_category`
 
-Output: One table1 file and One stats file [`output/final`](../output/README.md)
+2. **`hospitalization`**
+   - Fields: `patient_id`, `hospitalization_id`, `admission_dttm`, `discharge_dttm`, `age_at_admission`
 
-## Detailed Instructions for running the project
+3. **`medication_admin_continuous`**
+   - Fields: `hospitalization_id`, `admin_dttm`, `med_category`, `med_dose`
+   - Relevant `med_category` values:
+     ```
+     norepinephrine, epinephrine, phenylephrine, angiotensin, vasopressin, 
+     dopamine, dobutamine, milrinone, isoproterenol, cisatracurium, vecuronium, 
+     rocuronium, fentanyl, propofol, lorazepam, midazolam, hydromorphone, morphine
+     ```
 
-## 1. Update `config/config.json`
+4. **`respiratory_support`**
+   - Fields: `hospitalization_id`, `recorded_dttm`, `device_category`
 
-Follow instructions in the [config/README.md](config/README.md) file for detailed configuration steps.
+5. **`patient_assessments`**
+   - Fields: `hospitalization_id`, `recorded_dttm`, `assessment_category`, `numerical_value`, `categorical_value`
+   - Relevant `assessment_category` values:
+     ```
+     sbt_delivery_pass_fail, sbt_screen_pass_fail,
+     sat_delivery_pass_fail, sat_screen_pass_fail
+     ```
 
-## 2. Setup & RUN Project Environment
+6. **`vitals`**
+   - Fields: `hospitalization_id`, `recorded_dttm`, `vitals_category`, `vitals_value`
 
-Example for Python:
+7. **`crrt_therapy`**
+   - Fields: `hospitalization_id`, `recorded_dttm`
 
+---
+
+## Cohort Identification
+
+- **Study Period:** January 1, 2022 – December 31, 2024
+- **Inclusion Criteria:**
+  - At least one ICU admission with IMV during the study period
+  - Age ≥ 18 years at the time of initial hospital admission
+
+---
+
+## Expected Output
+
+Results will be written to the `output/final` directory and include:
+
+- `table1` summary file
+- Statistical metrics file
+
+See [`output/README.md`](../output/README.md) for details.
+
+---
+
+## Running the Project
+
+### 1. Configure the Project
+
+Update the configuration file at `config/config.json`.
+
+Refer to [`config/README.md`](config/README.md) for step-by-step instructions.
+
+---
+
+### 2. Set Up and Run the Environment
+
+#### On Mac/Linux:
+
+```bash
+# Open a terminal and run:
+bash setup_mac_or_linux.sh
+
+# Open a command prompt and run:
+setup_windows.bat
 ```
-if Mac/Linux:
-Open python on terminal
-& run setup_mac_or_linux.sh
 
-if Windows:
-Open python on terminal
-& run setup_windows.sh
-```
+### 3. Troubleshooting
 
-## 3. Error?
+If you encounter an error:
 
-Run the 01 & 02 notebooks cell by cell to get where the code is failing
+- Open and run the following notebooks **in sequence, cell by cell**:
+  1. `00_*.ipynb`
+  2. `01_*.ipynb`
+  3. `02_*.ipynb`
 
+This will help identify exactly where the code is failing and allow for targeted debugging.
 ---
