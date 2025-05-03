@@ -607,40 +607,44 @@ def compute_sofa(
     #  CRRT THERAPY table (for CRRT FLAG)
     #######################################################################
 
+    try:
+        crrt = pyCLIF2.load_data('clif_crrt_therapy')
+        crrt['hospitalization_id'] = crrt['hospitalization_id'].astype(str)
+        crrt = pyCLIF2.convert_datetime_columns_to_site_tz(crrt, pyCLIF2.helper['your_site_timezone'])
+        logger.info("Loaded %d CRRT rows", len(crrt))
 
-    crrt = pyCLIF2.load_data('clif_crrt_therapy')
-    crrt['hospitalization_id'] = crrt['hospitalization_id'].astype(str)
-    crrt = pyCLIF2.convert_datetime_columns_to_site_tz(crrt, pyCLIF2.helper['your_site_timezone'])
-    logger.info("Loaded %d CRRT rows", len(crrt))
+        # 2. Filter gcs within start and stop times
+        # Merge with ids to get start and stop times
+        crrt_sub = crrt.merge(
+            ids, 
+            on='hospitalization_id', 
+            how='inner'
+        )
+        # Filter labs within time window
+        crrt_sub = crrt_sub[
+            (crrt_sub['recorded_dttm'] >= (crrt_sub['start_dttm'] - pd.Timedelta(hours=72))) & 
+            (crrt_sub['recorded_dttm'] <= crrt_sub['stop_dttm'])
+        ]
 
-    # 2. Filter gcs within start and stop times
-    # Merge with ids to get start and stop times
-    crrt_sub = crrt.merge(
-        ids, 
-        on='hospitalization_id', 
-        how='inner'
-    )
-    # Filter labs within time window
-    crrt_sub = crrt_sub[
-        (crrt_sub['recorded_dttm'] >= (crrt_sub['start_dttm'] - pd.Timedelta(hours=72))) & 
-        (crrt_sub['recorded_dttm'] <= crrt_sub['stop_dttm'])
-    ]
+        crrt_final = crrt_sub[[id_col]].drop_duplicates()
+        crrt_final['crrt_flag'] = 1
 
-    crrt_final = crrt_sub[[id_col]].drop_duplicates()
-    crrt_final['crrt_flag'] = 1
+        # Join CRRT flag with SOFA scores
+        sofa_df = sofa_df.merge(
+            crrt_final,
+            on=id_col,
+            how='left'
+        )
 
-    # Join CRRT flag with SOFA scores
-    sofa_df = sofa_df.merge(
-        crrt_final,
-        on=id_col,
-        how='left'
-    )
+        # Fill NaN CRRT flags with 0 
+        sofa_df['crrt_flag'] = sofa_df['crrt_flag'].fillna(0)
 
-    # Fill NaN CRRT flags with 0 
-    sofa_df['crrt_flag'] = sofa_df['crrt_flag'].fillna(0)
+        # Where CRRT flag is 1, set SOFA renal score to 4
+        sofa_df.loc[sofa_df['crrt_flag'] == 1, 'sofa_renal'] = 4
 
-    # Where CRRT flag is 1, set SOFA renal score to 4
-    sofa_df.loc[sofa_df['crrt_flag'] == 1, 'sofa_renal'] = 4
+    except Exception as e:
+        logger.error("Error processing CRRT data: %s", str(e))
+        sofa_df['crrt_flag'] = 0
 
     #############################################################
 
