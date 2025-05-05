@@ -36,7 +36,8 @@ The following tables and fields are required:
    - Relevant `assessment_category` values:
      ```
      sbt_delivery_pass_fail, sbt_screen_pass_fail,
-     sat_delivery_pass_fail, sat_screen_pass_fail
+     sat_delivery_pass_fail, sat_screen_pass_fail,
+     rass, gcs_total
      ```
 
 6. **`vitals`**
@@ -88,7 +89,15 @@ bash setup_mac_or_linux.sh
 # Open a command prompt and run:
 setup_windows.bat
 ```
+To generate cohorts and produce results, follow the instructions below **in order**:
 
+1. **Run the `00_*` notebook first**  
+   This notebook is responsible for **cohort generation**. It must be completed before proceeding.
+
+2. **Run all `01_*` and `02_*` notebooks**  
+   These notebooks generate results based on the previously defined cohorts.  
+   ✅ **They can be triggered and run in parallel** for efficiency.
+   
 ### 3. Troubleshooting
 
 You can run notebooks one by one:

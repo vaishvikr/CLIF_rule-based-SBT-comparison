@@ -35,36 +35,12 @@ echo %CYAN%Registering the virtual environment as a Jupyter kernel...%RESET%
 python -m ipykernel install --user --name=.SBT --display-name="Python (SBT 2025)"
 
 echo %YELLOW%==================================================%RESET%
-echo %CYAN%Changing directory to code folder...%RESET%
-cd code
+echo %GREEN%Env setup completed.%RESET%
+pause
 
 
 echo %YELLOW%==================================================%RESET%
-echo %CYAN% Execute 00_cohort_id.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "00_cohort_id.ipynb" | python
-
-
+echo %GREEN%IMPORTANT: Please run the notebook named 00_* first to generate the cohort.%RESET%
+echo %GREEN%Then, run all 01_* and 02_* notebooks to generate results. These can be triggered/run in parallel.%RESET%
 echo %YELLOW%==================================================%RESET%
-echo %CYAN%Execute 01_SAT_standard.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "01_SAT_standard.ipynb" | python
-
-echo %YELLOW%==================================================%RESET%
-echo %CYAN%Execute 02_SBT_Standard.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "02_SBT_Standard.ipynb" | python
-
-echo %YELLOW%==================================================%RESET%
-echo %CYAN%Execute 02_SBT_Both_stabilities.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "02_SBT_Both_stabilities.ipynb" | python
-
-echo %YELLOW%==================================================%RESET%
-echo %CYAN%Execute 02_SBT_Hemodynamic_Stability.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "02_SBT_Hemodynamic_Stability.ipynb" | python
-
-echo %YELLOW%==================================================%RESET%
-echo %CYAN%Execute 02_SBT_Respiratory_Stability.ipynb and stream its cell output only%RESET%
-jupyter nbconvert --to script --stdout "02_SBT_Respiratory_Stability.ipynb" | python
-
-
-echo %YELLOW%==================================================%RESET%
-echo %GREEN%All tasks completed.%RESET%
 pause

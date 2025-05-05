@@ -46,23 +46,7 @@ separator
 echo -e "${CYAN}Changing directory to code folder…${RESET}"
 cd code || { echo "❌  'code' directory not found."; exit 1; }
 
-# ── 7. Run notebooks, streaming cell output ────────────────────────────────────
-for nb in \
-    "00_cohort_id.ipynb" \
-    "01_SAT_standard.ipynb" \
-    "02_SBT_Standard.ipynb" \
-    "02_SBT_Both_stabilities.ipynb" \
-    "02_SBT_Hemodynamic_Stability.ipynb" \
-    "02_SBT_Respiratory_Stability.ipynb"
-do
-    separator
-    echo -e "${CYAN}Executing ${nb} and streaming its cell output…${RESET}"
-    jupyter nbconvert --to script --stdout "${nb}" | python
-done
-
-# ── 8. Finish ──────────────────────────────────────────────────────────────────
-separator
-echo -e "${GREEN}All tasks completed.${RESET}"
-
-# Keep the window open if run interactively (optional)
-read -rp "Press [Enter] to exit…"
+echo -e "${CYAN}==================================================${RESET}"
+echo -e "${CYAN}IMPORTANT: Please run the notebook named 00_* first to generate the cohort.${RESET}"
+echo -e "${CYAN}Then, run all 01_* and 02_* notebooks to generate results. These can be triggered/run in parallel.${RESET}"
+echo -e "${CYAN}==================================================${RESET}"
